@@ -1,0 +1,68 @@
+{
+  "name": "msx-image-preview",
+  "displayName": "MSX Image Preview",
+  "description": "Preview MSX SCREEN 2 and SCREEN 5 BSAVE images in Visual Studio Code.",
+  "version": "0.1.1",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": ">=1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCustomEditor:msxImage.preview",
+    "onCommand:msxImage.openPreview"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "msxImage.preview",
+        "displayName": "MSX Image Preview",
+        "selector": [
+          {
+            "filenamePattern": "*.sc2"
+          },
+          {
+            "filenamePattern": "*.SC2"
+          },
+          {
+            "filenamePattern": "*.sc5"
+          },
+          {
+            "filenamePattern": "*.SC5"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "msxImage.openPreview",
+        "title": "Open MSX Image Preview",
+        "category": "MSX Image"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "msxImage.openPreview",
+          "when": "resourceExtname =~ /\\.(sc2|sc5)$/i",
+          "group": "navigation"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "msxImage.openPreview",
+          "when": "resourceExtname =~ /\\.(sc2|sc5)$/i",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

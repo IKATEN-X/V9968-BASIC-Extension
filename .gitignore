@@ -1,0 +1,36 @@
+# Local emulator, machine ROMs, downloaded references, settings and test IPC.
+/.local/
+
+# Generated ROMs, assembler output, demo disks, screenshots and test results.
+/build/
+/dist/
+*.o
+*.obj
+*.lis
+*.sym
+*.map
+
+# Machine ROMs and generated cartridge images must not be committed.
+*.rom
+*.ROM
+
+# Local dependencies and environment settings.
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Local diagnostics and generated editor packages.
+/debug.log
+/tools/vscode-msx-preview/*.vsix
+
+# Private development reference; never include in public snapshots.
+/README.local.md
+
+# OS metadata and editor temporary files.
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
