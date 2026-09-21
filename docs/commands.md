@@ -1,4 +1,4 @@
-# V9968 BASIC 命令リファレンス
+# V9968 拡張BASIC 命令リファレンス
 
 [READMEへ戻る](../README.md)
 
