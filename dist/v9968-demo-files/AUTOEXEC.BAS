@@ -1,0 +1,2 @@
+10 RUN"A:MENU.BAS"
+

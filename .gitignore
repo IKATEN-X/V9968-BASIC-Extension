@@ -1,18 +1,18 @@
 # Local emulator, machine ROMs, downloaded references, settings and test IPC.
 /.local/
 
-# Generated ROMs, assembler output, demo disks, screenshots and test results.
+# Generated build output, screenshots and test results.
 /build/
-/dist/
 *.o
 *.obj
 *.lis
 *.sym
 *.map
 
-# Machine ROMs and generated cartridge images must not be committed.
+# Exclude ROM images except the distributable extension ROM.
 *.rom
 *.ROM
+!/dist/v9968-basic.rom
 
 # Local dependencies and environment settings.
 node_modules/
