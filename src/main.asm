@@ -15,6 +15,9 @@ dispatch_initial:
     inc hl
     jr dispatch_initial
 dispatch_index:
+    inc hl
+    ld b,h
+    ld c,l
     ; 先頭の英字でROM内の表を引く。空の名前や範囲外の文字は未対応として返す。
     sub 'A'
     cp 26
@@ -27,11 +30,20 @@ dispatch_index:
     ld e,(hl)
     inc hl
     ld d,(hl)
-    ld a,(de)
-    or a
-    jp z,dispatch_unknown
+    ld h,b
+    ld l,c
+    ld b,1                ; 頭文字は索引で確定済み。Bは空白を除く一致文字数。
 dispatch_next:
-    ld hl,PROCNM
+    ld a,(de)
+    cp b
+    ; 辞書順なので、一致済みの接頭辞より手前で変わる候補には一致しない。
+    jp c,dispatch_unknown
+    inc de
+    jr nz,dispatch_skip_record
+    ld a,(de)
+    inc de
+    add a,b
+    ld c,a                ; 次候補までの距離に一致文字数を加えて保持する。
 dispatch_compare:
     ld a,(hl)
     cp ' '
@@ -41,9 +53,10 @@ dispatch_compare:
 dispatch_char:
     ld a,(de)
     cp (hl)
-    jr nz,dispatch_skip
+    jr nz,dispatch_mismatch
     inc de
     inc hl
+    inc b
     or a
     jr nz,dispatch_compare
     ld a,(de)
@@ -91,16 +104,21 @@ call_frame_allocate:
     pop ix
     or a
     ret
-dispatch_skip:
+dispatch_mismatch:
+    jp nc,dispatch_unknown ; 候補の文字が入力より大きければ、それ以降も一致しない。
+    ld a,c
+    sub b
+    jr dispatch_skip_distance
+dispatch_skip_record:
+    ; 前候補の不一致文字まで共通なら、この候補も文字比較なしで飛ばせる。
     ld a,(de)
     inc de
-    or a
-    jr nz,dispatch_skip
-    inc de
-    inc de
-    ld a,(de)
-    or a
-    jr nz,dispatch_next
+dispatch_skip_distance:
+    add a,e
+    ld e,a
+    jr nc,dispatch_next
+    inc d
+    jr dispatch_next
 dispatch_unknown:
     pop hl
     scf
@@ -138,62 +156,126 @@ command_initials:
     defw commands_end      ; Y
     defw commands_end      ; Z
 
-; 各リストはアルファベット順。0で探索を終え、別の英字の命令には進まない。
+; 辞書順の候補: 前候補との共通文字数、文字列先頭から次候補への距離、残りの文字列、処理先。
+; 最初の候補は頭文字1文字が確定済み。共通文字数0はグループ終端。
+; 距離と共通文字数の和は255以下に収める。表の整合性はdispatchテストで検証する。
 commands:
 commands_c:
-    defb "CIRCLE",0
+    defb 1
+    defb commands_circle_step - $ - 1
+    defb "IRCLE",0
     defw cmd_circle
-    defb "CIRCLESTEP",0
+commands_circle_step:
+    defb 6
+    defb commands_cls - $ - 1
+    defb "STEP",0
     defw cmd_circle_step
-    defb "CLS",0
+commands_cls:
+    defb 1
+    defb commands_color - $ - 1
+    defb "LS",0
     defw cmd_cls
-    defb "COLOR=",0
+commands_color:
+    defb 1
+    defb commands_copy - $ - 1
+    defb "OLOR=",0
     defw cmd_palette
-    defb "COPY",0
+commands_copy:
+    defb 2
+    defb commands_c_end - $ - 1
+    defb "PY",0
     defw cmd_copy
+commands_c_end:
     defb 0
 commands_f:
-    defb "FONT",0
+    defb 1
+    defb commands_f_end - $ - 1
+    defb "ONT",0
     defw cmd_font
+commands_f_end:
     defb 0
 commands_l:
-    defb "LINE",0
+    defb 1
+    defb commands_l_end - $ - 1
+    defb "INE",0
     defw cmd_line
+commands_l_end:
     defb 0
 commands_p:
-    defb "PATTERNOFF",0
+    defb 1
+    defb commands_pattern_on - $ - 1
+    defb "ATTERNOFF",0
     defw cmd_pattern_off
-    defb "PATTERNON",0
+commands_pattern_on:
+    defb 8
+    defb commands_pset - $ - 1
+    defb "N",0
     defw cmd_pattern_on
-    defb "PSET",0
+commands_pset:
+    defb 1
+    defb commands_put_sprite - $ - 1
+    defb "SET",0
     defw cmd_pset
-    defb "PUTSPRITE",0
+commands_put_sprite:
+    defb 1
+    defb commands_p_end - $ - 1
+    defb "UTSPRITE",0
     defw cmd_put_sprite
+commands_p_end:
     defb 0
 commands_s:
-    defb "SCREEN",0
+    defb 1
+    defb commands_set_page - $ - 1
+    defb "CREEN",0
     defw cmd_screen
-    defb "SETPAGE",0
+commands_set_page:
+    defb 1
+    defb commands_sprite - $ - 1
+    defb "ETPAGE",0
     defw cmd_page
-    defb "SPRITE",0
+commands_sprite:
+    defb 1
+    defb commands_sprite_clear - $ - 1
+    defb "PRITE",0
     defw cmd_sprite
-    defb "SPRITECLEAR",0
+commands_sprite_clear:
+    defb 6
+    defb commands_sprite_off - $ - 1
+    defb "CLEAR",0
     defw cmd_sprite_clear
-    defb "SPRITEOFF",0
+commands_sprite_off:
+    defb 6
+    defb commands_sprite_on - $ - 1
+    defb "OFF",0
     defw cmd_sprite_off
-    defb "SPRITEON",0
+commands_sprite_on:
+    defb 7
+    defb commands_s_end - $ - 1
+    defb "N",0
     defw cmd_sprite_on
+commands_s_end:
     defb 0
 commands_v:
-    defb "V9968",0
+    defb 1
+    defb commands_vdp - $ - 1
+    defb "9968",0
     defw cmd_init
-    defb "VDP",0
+commands_vdp:
+    defb 1
+    defb commands_v_end - $ - 1
+    defb "DP",0
     defw cmd_vdp
+commands_v_end:
     defb 0
 commands_w:
-    defb "WAITVBLANK",0
+    defb 1
+    defb commands_wait_vdp - $ - 1
+    defb "AITVBLANK",0
     defw cmd_wait_vblank
-    defb "WAITVDP",0
+commands_wait_vdp:
+    defb 5
+    defb commands_end - $ - 1
+    defb "DP",0
     defw cmd_wait_vdp
 commands_end:
     defb 0
