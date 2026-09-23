@@ -7,7 +7,29 @@
 ; 起動時に予約し、このカートリッジのSLTWRKエントリから参照する。
 statement:
     push hl
-    ld de,commands
+    ld hl,PROCNM
+dispatch_initial:
+    ld a,(hl)
+    cp ' '
+    jr nz,dispatch_index
+    inc hl
+    jr dispatch_initial
+dispatch_index:
+    ; 先頭の英字でROM内の表を引く。空の名前や範囲外の文字は未対応として返す。
+    sub 'A'
+    cp 26
+    jp nc,dispatch_unknown
+    add a,a
+    ld l,a
+    ld h,0
+    ld de,command_initials
+    add hl,de
+    ld e,(hl)
+    inc hl
+    ld d,(hl)
+    ld a,(de)
+    or a
+    jp z,dispatch_unknown
 dispatch_next:
     ld hl,PROCNM
 dispatch_compare:
@@ -79,6 +101,7 @@ dispatch_skip:
     ld a,(de)
     or a
     jr nz,dispatch_next
+dispatch_unknown:
     pop hl
     scf
     ret
@@ -86,49 +109,93 @@ jump_bc:
     push bc
     ret
 
+; A～Zの入口。命令がない英字は共通の空リストを参照する。
+command_initials:
+    defw commands_end      ; A
+    defw commands_end      ; B
+    defw commands_c        ; C
+    defw commands_end      ; D
+    defw commands_end      ; E
+    defw commands_f        ; F
+    defw commands_end      ; G
+    defw commands_end      ; H
+    defw commands_end      ; I
+    defw commands_end      ; J
+    defw commands_end      ; K
+    defw commands_l        ; L
+    defw commands_end      ; M
+    defw commands_end      ; N
+    defw commands_end      ; O
+    defw commands_p        ; P
+    defw commands_end      ; Q
+    defw commands_end      ; R
+    defw commands_s        ; S
+    defw commands_end      ; T
+    defw commands_end      ; U
+    defw commands_v        ; V
+    defw commands_w        ; W
+    defw commands_end      ; X
+    defw commands_end      ; Y
+    defw commands_end      ; Z
+
+; 各リストはアルファベット順。0で探索を終え、別の英字の命令には進まない。
 commands:
-    defb "V9968",0
-    defw cmd_init
-    defb "VDP",0
-    defw cmd_vdp
-    defb "SCREEN",0
-    defw cmd_screen
-    defb "SETPAGE",0
-    defw cmd_page
-    defb "COLOR=",0
-    defw cmd_palette
-    defb "LINE",0
-    defw cmd_line
-    defb "PSET",0
-    defw cmd_pset
+commands_c:
     defb "CIRCLE",0
     defw cmd_circle
     defb "CIRCLESTEP",0
     defw cmd_circle_step
     defb "CLS",0
     defw cmd_cls
+    defb "COLOR=",0
+    defw cmd_palette
     defb "COPY",0
     defw cmd_copy
-    defb "PATTERNON",0
-    defw cmd_pattern_on
-    defb "PATTERNOFF",0
-    defw cmd_pattern_off
-    defb "WAITVDP",0
-    defw cmd_wait_vdp
-    defb "WAITVBLANK",0
-    defw cmd_wait_vblank
-    defb "SPRITE",0
-    defw cmd_sprite
-    defb "PUTSPRITE",0
-    defw cmd_put_sprite
-    defb "SPRITEON",0
-    defw cmd_sprite_on
-    defb "SPRITEOFF",0
-    defw cmd_sprite_off
-    defb "SPRITECLEAR",0
-    defw cmd_sprite_clear
+    defb 0
+commands_f:
     defb "FONT",0
     defw cmd_font
+    defb 0
+commands_l:
+    defb "LINE",0
+    defw cmd_line
+    defb 0
+commands_p:
+    defb "PATTERNOFF",0
+    defw cmd_pattern_off
+    defb "PATTERNON",0
+    defw cmd_pattern_on
+    defb "PSET",0
+    defw cmd_pset
+    defb "PUTSPRITE",0
+    defw cmd_put_sprite
+    defb 0
+commands_s:
+    defb "SCREEN",0
+    defw cmd_screen
+    defb "SETPAGE",0
+    defw cmd_page
+    defb "SPRITE",0
+    defw cmd_sprite
+    defb "SPRITECLEAR",0
+    defw cmd_sprite_clear
+    defb "SPRITEOFF",0
+    defw cmd_sprite_off
+    defb "SPRITEON",0
+    defw cmd_sprite_on
+    defb 0
+commands_v:
+    defb "V9968",0
+    defw cmd_init
+    defb "VDP",0
+    defw cmd_vdp
+    defb 0
+commands_w:
+    defb "WAITVBLANK",0
+    defw cmd_wait_vblank
+    defb "WAITVDP",0
+    defw cmd_wait_vdp
+commands_end:
     defb 0
 
     include "parser.asm"
