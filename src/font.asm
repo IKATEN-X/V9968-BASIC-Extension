@@ -1,11 +1,14 @@
 ; VRAM 37600h..37DFFh（ページ6、Y=236..251）に8x8・256文字のフォントを1組置く。
 ; H.OUTDはGRP:出力の印字可能な文字だけを処理する。制御コード・式の書式整形・
 ; グラフィックカーソルはBASICが管理する。システムROMは書き換えない。
+; FONT(3)の日本語出力は同じ予約領域を一文字の作業用に使用する（kanji.asm）。
 defc FONT_TOP = 236
 defc FONT_BUFFER = 64
 defc FONT_RAM_SIZE = 32
 defc FONT_STUB = 4
 defc FONT_OLD = FONT_STUB + font_stub_old - font_stub
+defc BANNER_OLD = 23
+defc BANNER_PENDING = 29
 
 ; Disk BASICが固定ワーク領域を確保する前にHIMEMを下げてはいけない。
 ; この単体ROMでは、自スロットのSLTWRK全8バイトを使用する。
@@ -54,7 +57,13 @@ font_clear_hook:
     call font_state
     ld a,h
     or a
-    call z,font_allocate
+    jr nz,font_clear_existing
+    call font_allocate
+    jr font_clear_reset
+font_clear_existing:
+    call banner_cancel
+font_clear_reset:
+    call kanji_reset
     call pattern_off
     call font_slot_work
     ld de,-6
@@ -94,7 +103,7 @@ font_allocate:
     ld de,PATTERN_STATE
     add hl,de
     ld (hl),0
-    ret
+    jp banner_install
 
 ; BC = 確保サイズの負数。使用中のスタックからHIMEMまでを、ファイルバッファも含めて
 ; 移動し、各バッファの絶対ポインターを補正する。起動時専用。
@@ -224,6 +233,7 @@ font_off:
     jr nz,font_off_done
     ld (hl),0
 font_off_done:
+    call kanji_reset
     pop hl
     pop de
     pop bc
@@ -238,17 +248,30 @@ cmd_font:
     jp z,cmd_font_pattern  ; CALLはPROCNMから「$」を除く。「=」で代入を判別する。
     call end_statement
     ld a,(ix+STYLE)
-    cp 3
+    cp 4
     jp nc,illegal
     or a
     jp z,font_off
     call require_normal_graphics
     call save_text
+    ld a,(ix+STYLE)
+    cp 3
+    call z,kanji_detect
     call font_install
-    call font_upload
+    call kanji_reset
+    ld a,(ix+STYLE)
+    cp 3
+    call nz,font_upload
     call font_state
     ld a,(ix+STYLE)
     ld (hl),a
+    cp 3
+    jr nz,font_selected
+    ld de,KANJI_LEVEL
+    add hl,de
+    ld a,(ix+INV)
+    ld (hl),a
+font_selected:
     jp restore_text
 
 font_install:
@@ -265,7 +288,7 @@ font_install:
     ld e,l
     inc de
     ld (hl),0
-    ld bc,PATTERN_STATE-1 ; 初回導入時も、独立したパターン描画の状態を保持する。
+    ld bc,BANNER_OLD-1    ; 起動表示フックと独立したパターン描画の状態を保持する。
     ldir
     pop bc
     pop hl
@@ -328,7 +351,7 @@ font_stub_old:
     defs 5,$c9
     ret
 font_stub_end:
-    assert FONT_STUB + font_stub_end - font_stub <= PATTERN_STATE
+    assert FONT_STUB + font_stub_end - font_stub <= BANNER_OLD
 
 font_upload:
     ld hl,(CGPNT+1)
@@ -407,6 +430,8 @@ cmd_font_pattern:
     ldir
     call font_active
     jp z,illegal
+    cp 3
+    jp z,illegal
     call require_normal_graphics
     push ix
     pop hl
@@ -448,26 +473,32 @@ font_output:
     push ix
     push af
     call font_active
-    jr z,font_output_native
+    jp z,font_output_inactive
+    ld c,a
     ld a,(SCRMOD)
     cp 5
-    jr nz,font_output_native
+    jp nz,font_output_native
     ld a,(RG21SAV)
-    bit 6,a
-    jr nz,font_output_native
-    ld a,(RG20SAV)
-    and $60
-    cp $60
-    jr nz,font_output_native
+    and $41                ; V58互換モード、またはフラットインターレースでは標準出力へ戻す。
+    jp nz,font_output_native
     ld hl,(PTRFIL)
     ld a,h
     or l
-    jr z,font_output_native
+    jp z,font_output_native
     ld de,4
     add hl,de
     ld a,(hl)
     cp $fc                 ; CRT:/LPT:/ディスクファイルではなく、組み込みのGRP:デバイス。
-    jr nz,font_output_native
+    jp nz,font_output_native
+    ld a,c
+    cp 3
+    jr nz,font_output_regular
+    pop af
+    call kanji_decode
+    jp nc,font_output_pass
+    jr z,font_output_skip
+    jr font_output_draw_code
+font_output_regular:
     pop af
     ld b,a
     ld a,(GRPHED)
@@ -486,6 +517,21 @@ font_output_code:
     jr c,font_output_pass
 font_output_draw:
     ld e,a
+    ld d,0
+font_output_draw_code:
+    ; 確保前にフレーム256バイトと呼び出し・割り込み余裕256バイトを検査する。
+font_stack_check:
+    ld hl,-512
+    add hl,sp
+    jp nc,out_of_memory
+    push de
+    ld de,(STREND)
+    or a
+    sbc hl,de
+    pop de
+    jp c,out_of_memory
+    jp z,out_of_memory
+font_frame_allocate:
     ld hl,-256
     add hl,sp
     ld sp,hl
@@ -500,7 +546,15 @@ font_output_draw:
     ldir
     pop de
     ld (ix+TEMP),e
+    ld (ix+TEMP+1),d
+    call font_active
+    cp 3
+    jr z,font_output_kanji
     call font_draw
+    jr font_output_free
+font_output_kanji:
+    call kanji_draw
+font_output_free:
     ld hl,256
     add hl,sp
     ld sp,hl
@@ -508,6 +562,10 @@ font_output_skip:
     scf
     jr font_output_return
 font_output_native:
+    ld a,c
+    cp 3
+    call z,kanji_reset
+font_output_inactive:
     pop af
 font_output_pass:
     or a

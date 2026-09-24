@@ -12,10 +12,16 @@ const errorsOnly=process.argv.includes('--errors-only');
 const machine='Panasonic_FS-A1ST(V9968)';
 const disk=await prepareDemoDisk();
 const original=new Map();
+const sourceData=(name,data)=>{
+  if(!/\.(bas|txt|dat)$/i.test(name))return data;
+  // Remove DOS EOF before decoding; ICU's Shift-JIS decoder remaps this control byte.
+  if(/\.bas$/i.test(name)) {assert.equal(data.at(-1),26);data=data.subarray(0,-1);}
+  return Buffer.from(new TextDecoder('shift_jis',{fatal:true}).decode(data),'utf8');
+};
 for(const name of disk.files) original.set(name,await readFile(resolve(disk.directory,name)));
 assert.match(original.get('AUTOEXEC.BAS').toString('ascii'),/^10 RUN"A:MENU.BAS"\r\n\x1a$/);
 assert.deepEqual(original.get('BACK.SC5').subarray(0,7),Buffer.from([254,0,0,255,105,0,0]));
-for(const name of ['ORBIT.BAS','SPRITE.BAS','FONT.BAS','PALETTE.BAS','SHUFFLE.BAS','SPRITE16.BAS','WAVE.BAS','SHOOT.BAS','INTERLAC.BAS','COPYLOG.BAS','CIRCLE.BAS']) {
+for(const name of ['ORBIT.BAS','SPRITE.BAS','FONT.BAS','PALETTE.BAS','SHUFFLE.BAS','SPRITE16.BAS','WAVE.BAS','SHOOT.BAS','INTERLAC.BAS','COPYLOG.BAS','CIRCLE.BAS','WIRE.BAS','ROAD.BAS']) {
   assert.match(original.get(name).toString('ascii'),/demo stopped\.".*:RUN"A:MENU.BAS"/);
   assert.doesNotMatch(await readFile(resolve(root,'demo',name),'ascii'),/MENU\.BAS/);
 }
@@ -38,14 +44,14 @@ await writeFile(resolve(tooLarge,'LARGE.BIN'),Buffer.alloc(714*1024));
 await assert.rejects(prepareDemoDisk({source:tooLarge,entry:'START.BAS'}),/capacity/);
 const broken=await mkdtemp(resolve(root,'build/disk-missing-'));
 for(const [name,data] of original) {
-  if(!['AUTOEXEC.BAS','FONT.DAT','CITY.SC5'].includes(name)) await writeFile(resolve(broken,name),data);
+  if(!['AUTOEXEC.BAS','FONT.DAT','CITY.SC5'].includes(name)) await writeFile(resolve(broken,name),sourceData(name,data));
 }
 const brokenDisk=await prepareDemoDisk({source:broken,entry:'ASSETS.BAS'});
 const brokenShooter=await prepareDemoDisk({source:broken,entry:'SHOOT.BAS'});
 const brokenShooters=[{disk:brokenShooter,asset:'CITY.SC5',line:20}];
 for(const [asset,line] of [['RUNWAY.SC5',42],['TITLE.SC5',44],['CARGO.SC5',46]]) {
   const directory=await mkdtemp(resolve(root,'build/disk-missing-shoot-'));
-  for(const [name,data] of original) if(name!=='AUTOEXEC.BAS' && name!==asset) await writeFile(resolve(directory,name),data);
+  for(const [name,data] of original) if(name!=='AUTOEXEC.BAS' && name!==asset) await writeFile(resolve(directory,name),sourceData(name,data));
   brokenShooters.push({disk:await prepareDemoDisk({source:directory,entry:'SHOOT.BAS'}),asset,line});
 }
 console.log('PASS: 8.3 file set, CRLF BASIC, binary assets, isolated snapshots, custom source/entry and validation');
@@ -75,6 +81,8 @@ async function menu() {
   assert.match(text,/F\s+FLAT INTERLACE/);
   assert.match(text,/L\s+LOGICAL COPY/);
   assert.match(text,/C\s+CIRCLE/);
+  assert.match(text,/W\s+WIREFRAME/);
+  assert.match(text,/R\s+ROAD DRIVE/);
   assert.match(text,/0\s+BASIC/);
 }
 async function screenshot(name) {
@@ -229,7 +237,7 @@ try {
     await msx.command('debug remove_watchpoint $::disk_title_watch');
     await msx.advance(0.5);
     assert.equal(await number('peek 0xFCAF'),5,'Shooter menu entry');
-    assert.equal(await number('debug read {VDP regs} 20'),0x7b,'Mode 3 and SVNS');
+    assert.equal(await number('debug read {VDP regs} 20'),0x1b,'Mode 3 and SVNS');
     for(const [page,name] of [[1,'CITY.SC5'],[2,'POWER.SC5'],[3,'CARGO.SC5'],[4,'TITLE.SC5'],[5,'RUNWAY.SC5']]) {
       assert.deepEqual(await block(page*32768,32768),original.get(name).subarray(7),`Shooter source page ${page}`);
     }
@@ -250,7 +258,7 @@ try {
   assert.equal(await number('debug read {VDP regs} 23'),scroll);
   for(const k of ['v','V']) {
     await msx.type(k); await msx.advance(1);
-    assert.equal(await number('debug read {VDP regs} 20'),0x7b,'Removed V key must leave SVNS enabled');
+    assert.equal(await number('debug read {VDP regs} 20'),0x1b,'Removed V key must leave SVNS enabled');
     assert.deepEqual(await block(0x37e00,512),game,'V does not change the paused sprites');
     assert.equal(await number('debug read {VDP regs} 23'),scroll);
   }
@@ -301,7 +309,7 @@ try {
   assert.notDeepEqual(rotatedImage.subarray(0,131072),interlaceImage.subarray(0,131072),'FIL rotation resumes');
   assert.deepEqual(rotatedImage.subarray(131072),interlaceImage.subarray(131072),'Rotation leaves the source page unchanged');
   await msx.type('\x1b');await menu();
-  assert.equal(await number('debug read {VDP regs} 21'),0);
+  assert.equal(await number('debug read {VDP regs} 21'),1,'Menu returns to V58 compatibility mode');
   console.log('PASS: SCREEN 7 interlace demo, high-page opaque rotation, ignored T, FIL toggle and menu cleanup');
 
   await msx.type('l');await msx.advance(15);
@@ -383,7 +391,7 @@ try {
   assert.equal(await number('set ::disk_allocations'),0,'RUN/CLEAR must not reserve RAM again');
   assert.equal(await number('peek16 0xFC4A'),himem);
   assert.equal(await number('peek16 0xFD2F'),work,'All demos must retain the installed font hook');
-  console.log('PASS: all twelve demos load from disk and return to the menu without RAM leaks');
+  console.log('PASS: twelve existing demos load from disk and return to the menu without RAM leaks; wireframe has its own --disk test');
 
   await msx.type('0'); await msx.advance(1);
   await msx.type('SAVE"A:WRITE.BAS"\r'); await msx.advance(3);

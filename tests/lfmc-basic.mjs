@@ -31,7 +31,7 @@ try {
   assert.ok(actual, `BASIC reproduction did not report its result:\n${screen}`);
   const cpu = await msx.command('get_active_cpu');
   assert.equal(cpu, machine === 'V9968_Basic' ? 'z80' : 'r800');
-  assert.ok(actual === '33333535' || actual === '99999999', `Unexpected result ${actual}`);
+  assert.equal(actual, '99999999', 'LFMC must wait for bitmap input, not consume foreground as glyph data');
   assert.equal(Number(await msx.command('debug read {VDP status regs} 2')) & 1, 0,
     'The diagnostic must abort LFMC before POINT and returning to the prompt');
   assert.equal(await msx.command('debug read {VDP regs} 15'), '0', 'Restore status selection');
@@ -41,8 +41,7 @@ try {
     assert.match(await msx.screen(), new RegExp(`ACTUAL:\\s+${actual}`), 'Keep the result visible');
   }
   console.log(`${machine} (${cpu}), ${disk ? 'disk AUTOEXEC with ROM' : 'without extension ROM'}: expected=99999999 actual=${actual}`);
-  console.log(actual === '33333535' ? 'REPRODUCED: foreground 05h consumed as bitmap data'
-    : 'NOT REPRODUCED: target remained unchanged');
+  console.log('PASS: target remained unchanged until bitmap input');
 } finally {
   await msx.stop();
 }

@@ -61,7 +61,7 @@ try {
       set r23 [debug read {VDP regs} 23]
       scroll_check {$r23 == ($top & 255)} "R23 phase"
       scroll_check {[peek 0xfff6] == $r23} "BASIC vertical-scroll shadow"
-      scroll_check {[debug read {VDP regs} 20] == 0x7b} "SVNS and sprite mode 3 stay enabled"
+      scroll_check {[debug read {VDP regs} 20] == 0x1b} "SVNS and sprite mode 3 stay enabled"
       set data [debug read_block {physical VRAM} 0 32768]
       for {set y 0} {$y < 212} {incr y} {
         set s [expr {(($top+$y)%1024)*128}]; set d [expr {(($r23+$y)&255)*128}]
@@ -100,7 +100,7 @@ try {
     debug set_watchpoint write_mem 0xf41d {$::wp_last_value == 0 && [peek 0xf41c] == 100 && $::scroll_observe && $::scroll_error eq {}} {scroll_guard scroll_frame}`);
   await stopped();
   if(pal) await msx.command('debug write {VDP regs} 9 [expr {[debug read {VDP regs} 9] | 2}]; poke 0xffe8 [debug read {VDP regs} 9]');
-  assert.equal(await number('debug read {VDP regs} 20'),0x7b);
+  assert.equal(await number('debug read {VDP regs} 20'),0x1b);
   const himem=await number('peek16 0xfc4a'),work=await number('peek16 0xfd2f');
   const patterns=await block(7*32768,16384),reserved=await block(0x37600,2048);
   for(const [i,page] of pages.entries()) assert.deepEqual(await block(page*32768,32768),scene.subarray(i*32768,(i+1)*32768));

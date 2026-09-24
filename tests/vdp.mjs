@@ -15,18 +15,18 @@ const invalid=[
   ['_VDP(48)="X"',13],['_VDP(48)=1/0',11],['_VDP(48)=40000',5],['_VDP(48)=1E20*1E20',6]
 ].map(([code,error])=>add([code],error));
 const setup=add(['_SCREEN(5):_CLS(0):_WAIT VDP']);
-const disabled=add(['VDP(21)=0']);
+const disabled=add(['VDP(21)=0:VDP(22)=VDP(22) OR 1']);
 const rejected=[
   '_VDP(48)=17','_COLOR=(255,1,2,3)','_PSET(0,0),3','_LINE(0,0)-(5,5),3',
   '_CLS(3)','_COPY(0,0)-(3,3),0 TO(0,0),1','_SET PAGE(1,0)','_FONT(1)','_SPRITE(3)'
 ].map(code=>add([code],5));
 const preserve=add([
-  'VDP(21)=&H76:VDP(22)=1',
+  'VDP(21)=&H16:VDP(22)=2',
   '_VDP(48)=0:_COLOR=(255,31,12,7):_PSET(0,0),3:_WAIT VDP',
   '_SPRITE(3):_SPRITE(0):_V9968'
 ]);
 const busy=add([
-  'VDP(21)=&H70:VDP(22)=0',
+  'VDP(21)=&H10:VDP(22)=0',
   'FOR N=33 TO 46:VDP(N)=0:NEXT N',
   'VDP(42)=1:VDP(44)=3:VDP(45)=&H33:VDP(47)=&HC0',
   '_VDP(48)=19'
@@ -88,7 +88,7 @@ try {
     `40 ON A GOSUB ${cases.map((_,i)=>1000+i*100).join(',')}`,
     '50 POKE &HC001,1:GOTO 20',
     '9000 POKE &HC003,ERR:POKE &HC008,ERL MOD 256:POKE &HC009,ERL\\256',
-    '9010 IF PEEK(&HC005)=1 THEN VDP(21)=&H71:RESUME',
+    '9010 IF PEEK(&HC005)=1 THEN _V9968:RESUME',
     '9020 IF PEEK(&HC005)=2 THEN RESUME NEXT',
     '9030 POKE &HC001,255:RESUME 20'
   ];
@@ -123,10 +123,10 @@ try {
   assert.equal(await number('peek 0xc006'),2);
   assert.equal(await number('debug read {VDP regs} 47'),23);
   await run(preserve);
-  assert.equal(await number('debug read {VDP regs} 20'),0x77);
-  assert.equal(await number('peek 0xfff3'),0x77);
-  assert.equal(await number('debug read {VDP regs} 21'),1);
-  assert.equal(await number('peek 0xfff4'),1);
+  assert.equal(await number('debug read {VDP regs} 20'),0x17);
+  assert.equal(await number('peek 0xfff3'),0x17);
+  assert.equal(await number('debug read {VDP regs} 21'),2);
+  assert.equal(await number('peek 0xfff4'),2);
   await run(busy);
   assert.equal(await number('set ::raw_entry_busy'),1,'Test must exercise an actually busy VDP');
   assert.equal(await number('set ::raw_busy'),0,'Never change command parameters during execution');

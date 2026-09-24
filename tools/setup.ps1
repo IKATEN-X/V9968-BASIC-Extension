@@ -12,12 +12,12 @@ if (!(Test-Path "$emulator\share\scripts")) {
     New-Item -ItemType Directory -Force -Path $local | Out-Null
     Copy-Item -LiteralPath $OpenMsx -Destination $emulator -Recurse
 }
-$zip = Join-Path $local 'v9968.zip'
+$zip = Join-Path $local 'v9968-c620b69.zip'
 if (!(Test-Path $zip)) {
-    Invoke-WebRequest -UseBasicParsing -Uri 'https://buppu3.github.io/openMSX/derived/openmsx-21.0-v9968-d884c4b-x64-VC-Release.zip' -OutFile $zip
+    Invoke-WebRequest -UseBasicParsing -Uri 'https://buppu3.github.io/openMSX/derived/openmsx-21.0-v9968-c620b69-x64-VC-Release.zip' -OutFile $zip
 }
-if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne '6C44F0AE3C58C6FBE6F7F450BE44B89997062F795F2D333DB721D4FB38130F95') {
-    throw 'The V9968 emulator archive differs from the tested d884c4b build.'
+if ((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash -ne '764C42EC1D202F90283C1A75558B9CD6C0E29F0481103854C447487EF2E4FC8E') {
+    throw 'The V9968 emulator archive differs from the tested c620b69 build.'
 }
 Expand-Archive -LiteralPath $zip -DestinationPath "$local\v9968-download" -Force
 Copy-Item -LiteralPath "$local\v9968-download\openmsx.exe" -Destination "$emulator\openmsx.exe" -Force

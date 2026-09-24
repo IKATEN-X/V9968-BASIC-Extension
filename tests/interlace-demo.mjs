@@ -96,7 +96,7 @@ try {
   await screenshot('rotated');
   await msx.type('P');await msx.advance(.2);await msx.type('\x1b');await msx.advance(2);
   assert.equal(await number('peek 0xfcaf'),0);
-  assert.equal(await number('debug read {VDP regs} 21'),0);
+  assert.equal(await number('debug read {VDP regs} 21'),1,'SCREEN 0 restores V58 compatibility');
   assert.match(await msx.screen(),/interlace demo stopped/);
   console.log(`PASS [${machine}]: opaque-only rotation, pause/resume, ignored T, normal-mode freeze, FIL restart and Escape cleanup`);
 } finally {await msx.stop();}

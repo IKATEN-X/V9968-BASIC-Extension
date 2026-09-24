@@ -158,7 +158,7 @@ try {
   assert.equal(await msx.command('get_active_cpu'),'r800');
   assert.equal(await number('peek 0xfcaf'),5,'Shooter starts in SCREEN 5');
   assert.equal(await number('peek 0xf3db'),0,'Keep the user-selected silent key clicks');
-  assert.equal(await number('debug read {VDP regs} 20'),0x7b,'SVNS and mode 3');
+  assert.equal(await number('debug read {VDP regs} 20'),0x1b,'SVNS and mode 3');
   if(pal) await msx.command('debug write {VDP regs} 9 [expr {[debug read {VDP regs} 9] | 2}]; poke 0xffe8 [debug read {VDP regs} 9]');
   const himem=await number('peek16 0xfc4a'),work=await number('peek16 0xfd2f');
   const title=(await readFile(resolve(disk.directory,'TITLE.SC5'))).subarray(7);
@@ -215,7 +215,7 @@ try {
   await frames(5);assert.deepEqual(await sat(),paused);assert.equal(await number('debug read {VDP regs} 23'),scroll);
   assert.deepEqual(await bytes('physical VRAM',0,32768),pausedBackground,'Pause must stop background replenishment');
   for(const k of ['v','V']) {
-    await key(k);assert.equal(await number('debug read {VDP regs} 20'),0x7b,'V no longer toggles SVNS');
+    await key(k);assert.equal(await number('debug read {VDP regs} 20'),0x1b,'V no longer toggles SVNS');
     assert.deepEqual(await sat(),paused,'V cannot change the HUD or gameplay sprites');
     assert.equal(await number('debug read {VDP regs} 23'),scroll);
   }

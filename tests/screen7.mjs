@@ -49,14 +49,16 @@ const oddDraw=add('_PSET(511,300),1',5),oddEntry=add('_SCREEN(,,,,,4)',5);
 const recoverySetup=add('X%=512');
 const recovery=add('_PSET(X%,423),15:POKE &HC006,1:_WAIT VDP',5);
 const next=add('_COPY(0,0)-(511,10),0 TO(1,0),1:POKE &HC006,2',5);
-const noEvr=add('VDP(21)=48'),disabledDraw=add('_PSET(511,200),15',5);
-const noHs=add('VDP(21)=112:_PSET(511,511),11:_WAIT VDP');
-const fid=add('VDP(22)=65:_PSET(511,511),12:_WAIT VDP');
+const compatVram=add('VDP(22)=VDP(22) OR 1'),disabledDraw=add('_PSET(511,200),15',5);
+const noHs=add('VDP(21)=16:_PSET(511,511),11:_WAIT VDP');
+const preservedMode=add('VDP(22)=66:_PSET(511,511),12:_WAIT VDP');
 const font=add('_SCREEN(5):_FONT(1):SCREEN 7:_WAIT VDP');
 const sat=add('_SCREEN(5):_SPRITE(3):SCREEN 7:_WAIT VDP');
+const sp3Blocked=['_PSET(0,0),1','_LINE(0,0)-(31,31),1','_CIRCLE(16,16),8,1',
+  '_CLS(2)','_SET PAGE(0,2)','_COPY(0,0)-(15,15),0 TO(32,32),1'
+].map(code=>add(code,5));
 const rawFlat=add('VDP(22)=64:_SET PAGE(0,1)');
 const fontBad=[236,251].map(y=>add(`_PSET(2,${y}),1`,5));
-const satBad=[252,255].map(y=>add(`_PSET(2,${y}),1`,5));
 const crossing=add('_LINE(2,200)-(2,300),1',5);
 const copyReserved=add('_COPY(0,200)-(511,300),0 TO(0,200),1',5);
 const above=add('_PSET(2,256),9:_WAIT VDP');
@@ -161,10 +163,11 @@ try {
   await run(oddNative);await rejected(oddDraw);await run(normal);await run(oddNative);await rejected(oddEntry);
   await run(flat);await run(recoverySetup);await run(recovery,1);assert.equal(await number('peek 0xc006'),1);
   await run(next,2);assert.equal(await number('peek 0xc006'),2);
-  await run(noHs);assert.equal(await number('debug read {VDP regs} 20'),112);assert.equal(pixel(await vram(),511,511,0,true),11);
-  await run(fid);assert.equal(await number('debug read {VDP regs} 21'),65);
-  await run(noEvr);await rejected(disabledDraw);
-  for(const [setup,invalid,address,size,top] of [[font,fontBad,0x37600,2048,236],[sat,satBad,0x37e00,512,252]]) {
+  await run(noHs);assert.equal(await number('debug read {VDP regs} 20'),16);assert.equal(pixel(await vram(),511,511,0,true),11);
+  await run(preservedMode);assert.equal(await number('debug read {VDP regs} 21'),66);
+  await run(compatVram);await rejected(disabledDraw);
+  await run(sat);for(const c of sp3Blocked) await rejected(c);
+  for(const [setup,invalid,address,size,top] of [[font,fontBad,0x37600,2048,236]]) {
     await run(setup);await run(normalReservedPage);
     const protectedData=await bytes('physical VRAM',address,size);
     for(const c of invalid) await rejected(c);

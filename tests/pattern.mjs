@@ -45,7 +45,7 @@ const gc=add('DIM QD$(7):FOR J=0 TO 127:QD$(J AND 7)=STRING$(32,65+(J AND 7)):NE
 const recoverSetup=add('X%=8');
 const resume=add('_PATTERN ON(X%):POKE &HC006,1',5),next=add('_PATTERN ON(8):POKE &HC006,2',5);
 const missing=add('_PATTERN ON(7)',7),lowMemory=add('_PATTERN ON(6)',7);
-const noEcom=add('VDP(21)=81'),noEvr=add('VDP(21)=49'),noExtras=add('VDP(21)=96');
+const compatCommands=add('VDP(22)=VDP(22) OR 1'),compatVram=add('VDP(22)=VDP(22) OR 1'),noExtras=add('VDP(21)=0');
 const deniedOn=add('_PATTERN ON(7)',5),deniedDraw=add('_PSET(0,0),1',5);
 const font=add('_SCREEN(5):_PATTERN ON(7):_FONT(1)');
 const sat=add('_SCREEN(5):_SPRITE(3):_PATTERN ON(7)');
@@ -166,7 +166,7 @@ try {
   const ptr=await num('peek16 0xfd2f');await msx.command('poke16 0xfd2f 1');await rejected(missing);await run(off);await msx.command(`poke16 0xfd2f ${ptr}`);
   for(const size of [511,512]) {await msx.command(`set ::pt_inject ${size}`);await rejected(lowMemory);}
   await msx.command('set ::pt_inject 513');await run(on[6]);assert.equal(await num('set ::pt_oom'),2);await run(on[7]);
-  for(const c of [noEcom,noEvr]) {await run(c);await rejected(deniedOn);await rejected(deniedDraw);await run(off);await pattern(0);await run(setup[8]);await run(on[7]);}
+  for(const c of [compatCommands,compatVram]) {await run(c);await rejected(deniedOn);await rejected(deniedDraw);await run(off);await pattern(0);await run(setup[8]);await run(on[7]);}
   await run(noExtras);await run(edge);await pattern(135);
   await run(setup[6]);await run(on[7]);await run(partial);await pattern(135);await run(page);await pattern(135);
   for(const [init,bad,top,address,size] of [[font,fontBad,236,0x37600,2048],[sat,satBad,252,0x37e00,512]]) {

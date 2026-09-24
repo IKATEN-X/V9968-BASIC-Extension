@@ -1,25 +1,29 @@
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile, rename, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { encodeMsxText } from './msx-text.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const delay = ms => new Promise(r => setTimeout(r, ms));
 export const tclString = s => `{${s.replaceAll('\\', '/')}}`;
 
 export class OpenMsx {
-  constructor({ rom = null, visual = false, machine = 'V9968_Basic', diskDirectory = null } = {}) {
+  constructor({ rom = null, visual = false, machine = 'V9968_Basic', diskDirectory = null,
+    extensions = [], userDataDirectory = null } = {}) {
     this.ipc = resolve(root, `.local/ipc-${process.pid}-${Date.now()}`);
-    this.ready = this.start({ rom, visual, machine, diskDirectory });
+    this.ready = this.start({ rom, visual, machine, diskDirectory, extensions, userDataDirectory });
   }
-  async start({ rom, visual, machine, diskDirectory }) {
+  async start({ rom, visual, machine, diskDirectory, extensions, userDataDirectory }) {
     await mkdir(this.ipc, { recursive: true });
     const args = ['-machine', machine, '-script', resolve(root, 'emulator/bridge.tcl')];
+    for (const extension of extensions) args.push('-ext', extension);
     if (rom) args.push('-cart', resolve(root, rom), '-romtype', 'Normal');
     if (diskDirectory) args.push('-script',resolve(root,'emulator/disk.tcl'));
     this.child = spawn(resolve(root, '.local/openmsx/openmsx.exe'), args, {
       cwd: root, windowsHide: true,
       env: { ...process.env, OPENMSX_SYSTEM_DATA: resolve(root, '.local/openmsx/share'),
-        OPENMSX_HOME: resolve(root, '.local/home'), OPENMSX_USER_DATA: resolve(root, '.local/user'),
+        OPENMSX_HOME: resolve(root, '.local/home'),
+        OPENMSX_USER_DATA: userDataDirectory ? resolve(userDataDirectory) : resolve(root, '.local/user'),
         V9968_IPC_DIRECTORY: this.ipc, V9968_VISUAL: visual ? '1' : '0',
         ...(diskDirectory?{V9968_DISK:resolve(diskDirectory)}:{}) }
     });
@@ -64,7 +68,7 @@ export class OpenMsx {
     }
   }
   async type(text) {
-    const hex = Buffer.from(text, 'ascii').toString('hex');
+    const hex = encodeMsxText(text).toString('hex');
     await this.command(`type_via_keybuf [binary format H* ${hex}]`);
   }
   async screen() { return this.command('get_screen'); }

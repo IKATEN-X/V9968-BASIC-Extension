@@ -289,5 +289,7 @@ commands_end:
     include "copy-array.asm"
     include "sprite.asm"
     include "font.asm"
+    include "kanji.asm"
+    include "banner.asm"
     include "sine.inc"
 rom_end:

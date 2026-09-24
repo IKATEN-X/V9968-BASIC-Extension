@@ -95,10 +95,10 @@
   glyph before restoring the background register and returning to BASIC. Keep
   the internal wait; do not require _WAIT VDP after GRP PRINT. Check completion
   and register restoration at the glyph boundary on both Z80 and R800.
-- Further font/kanji development is paused at the user's request. The user has
-  reported the LFMC issue to the author; do not start an LFMM workaround while
-  paused. Keep existing font support and diagnostics. On user-directed resumption,
-  check the response/fix and rerun the reproduction in docs/lfmc-investigation.md.
+- The user resumed font work on 2026-09-23 and approved LFMM-first FONT(3).
+  Keep the LFMC diagnostics: delayed transfers still fail on c620b69. Japanese
+  glyph staging belongs inside the existing font reservation, not arbitrary
+  VRAM. Do not increase the resident reservation or temporary frame for it.
 
 ## Memory And BASIC Compatibility
 
@@ -157,8 +157,8 @@ data pointers.
   focused failure/lifecycle tests from the policy. Record untested configurations
   and existing gaps instead of treating a passing normal demo as proof of safety.
 
-The boot allocator and GRP font-hook stack headroom checks and the restricted
-SLTWRK layout remain audit items. CALL entry now checks its 256-byte frame plus
+The boot allocator and restricted SLTWRK layout remain audit items.
+CALL entry and GRP output now check their 256-byte frame plus
 256 bytes of nested-call margin against STREND before moving SP (ERR=7).
 This does not prove unbounded expression/USR/interrupt stack use. Fix or explicitly
 resolve remaining issues before growing/generalizing the corresponding mechanism.
@@ -250,7 +250,7 @@ checks unchanged VRAM during palette animation and optionally rendered pixels.
   The pinned fork clips mode-3 drawing at X=256 even in SCREEN 6. Keep correct
   SAT coordinates, do not compensate in BASIC or claim full-width rendering.
   tests/sprite-screen6.mjs --visual checks both left-half rendering and this
-  limitation on Z80/R800. Font development remains paused.
+  limitation on Z80/R800. FONT remains SC5-only, including Japanese FONT(3).
 - Reuse SCREEN 7's 9-bit X fields and SCREEN 5's page/protection mapping.
   No resident RAM, CALL-frame, transient-stack or VRAM reservation growth.
   Allocation/headroom audits remain open; do not generalize the allocator.
@@ -362,7 +362,7 @@ checks unchanged VRAM during palette animation and optionally rendered pixels.
 - Final sprite target is every native mode except SCREEN 0. The user approved
   shipping non-FIL SCREEN 1..6 first and leaving SCREEN 7..12 rejected until
   the fork's planar/SP3 mapping is fixed. Do not modify the emulator, relocate
-  SAT to another area or claim those modes work. FONT remains paused/SC5 only.
+  SAT to another area or claim those modes work. FONT remains SC5-only.
 - tests/pattern.mjs covers both CPUs, all available native modes, FIL, physical
   pages, logical/transformed/in-place copies, synchronous returns, errors,
   reservation and BASIC-data protection, first font install, lifecycle and CALL

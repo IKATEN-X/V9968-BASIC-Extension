@@ -26,7 +26,7 @@ const cases = [
   ['_FONT(1):_SET PAGE(1,1):_CLS(5)', ...sample],
   ['_FONT(2):_SET PAGE(2,2):_CLS(0):PSET(16,16):PRINT #1,"ABCD";'],
   ['A$=CHR$(129)+CHR$(66)+CHR$(36)+CHR$(24)', '_FONT$(65)=A$+A$', 'PSET(16,40):PRINT #1,"A";'],
-  ['_FONT(3)'],
+  ['_FONT(4)'],
   ['_FONT$(-1)="12345678"'],
   ['_FONT$(256)="12345678"'],
   ['_FONT$(65)="1234567"'],
@@ -50,11 +50,13 @@ const block = async (dev, addr, size) => Buffer.from(await msx.command(`binary e
 async function run(index, error = 0) {
   await msx.command(`poke 0xC001 0; poke 0xC003 0; poke 0xC000 ${index}`);
   for (let i = 0; i < 40 && !await read(0xC001); i++) await msx.advance(0.2);
+  if(!await read(0xC001))console.log('Timeout state:',await msx.command('list [reg PC] [reg SP] [peek16 0xf41c] [peek 0xfcaf] [peek16 0xf6c6]'),await msx.screen().catch(()=> 'graphics'));
   assert.ok(await read(0xC001), `case ${index} timed out, ERR=${await read(0xC003)}`);
   if(await read(0xC003)!==error) console.log('Error trace:', await msx.command('set ::font_error'));
   assert.equal(await read(0xC003), error, `case ${index}: ${cases[index-1].join(':')}`);
 }
 try {
+  if(process.argv.includes('--realtime')) await msx.command('set throttle on; set speed 100');
   await msx.advance(12);
   const work = (await read(0xFD2F) + 256*await read(0xFD30)) & 0xFFFE;
   const himem = await read(0xFC4A) + 256*await read(0xFC4B);

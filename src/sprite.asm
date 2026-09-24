@@ -55,7 +55,7 @@ require_sprite_graphics:
     or a
     jp z,illegal
     cp 7
-    jp nc,illegal           ; 検証対象のforkでは、プレーン形式でのSP3アドレス処理に不具合がある。
+    jp nc,illegal           ; 新定義での背景描画とSAT予約領域の共存検証後に、SCREEN 7以降を開放する。
 sprite_graphics_normal:
     ld a,(RG21SAV)
     bit 6,a

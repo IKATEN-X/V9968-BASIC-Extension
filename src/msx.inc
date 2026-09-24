@@ -2,6 +2,7 @@ defc CALBAS = $0159
 defc EXTROM = $015f
 defc SUB_SCREEN = $0159
 defc CHGMOD = $005f
+defc CHPUT = $00a2
 defc FRMEVL = $4c64
 defc FRMQNT = $542f
 defc PTRGET = $5ea4
@@ -14,6 +15,7 @@ defc DAC = $f7f6
 defc ACPAGE = $faf6
 defc DPPAGE = $faf5
 defc SCRMOD = $fcaf
+defc CSRX = $f3dd
 defc FORCLR = $f3e9
 defc BAKCLR = $f3ea
 defc BDRCLR = $f3eb
@@ -52,6 +54,7 @@ defc SLTTBL = $fcc5
 defc SLTWRK = $fd09
 defc H_OUTD = $fee4
 defc H_CLEA = $fed0
+defc H_READ = $ff07
 
 ; IX+0..26 is the R#32..58 command register image (R#46 written last).
 ; SCREEN 6/7 X high bytes, outside the command image and numeric-token buffer.

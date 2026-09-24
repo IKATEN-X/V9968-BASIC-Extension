@@ -3,14 +3,20 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { shootAssets } from './shoot-assets.mjs';
+import { roadAssets } from './road-assets.mjs';
+import { sourceText, textFile } from './msx-text.mjs';
 
 const root=resolve(import.meta.dirname,'..');
 const diskName=/^[A-Z0-9_-]{1,8}(?:\.[A-Z0-9_-]{1,3})?$/;
-function textFile(buffer,basic=false) {
-  if(buffer.some(byte=>byte>127)) throw new Error('Demo text files must be ASCII without a BOM.');
-  const text=buffer.toString('ascii').replace(/\x1a+$/,'').replace(/\r\n|\r/g,'\n').trimEnd();
-  if(basic && text.split('\n').some(line=>line.length>=255)) throw new Error('BASIC line exceeds the supported input length.');
-  return Buffer.from(text.replaceAll('\n','\r\n')+'\r\n'+(basic?'\x1a':''),'ascii');
+export function demoWithMenuReturn(data,name) {
+  const lines=sourceText(data).replace(/\x1a+$/,'').replace(/\r\n|\r/g,'\n').trimEnd().split('\n');
+  const marker=/:\s*PRINT\s+"V9968 [^"]*demo stopped\."\s*(?::\s*END\s*)?$/i;
+  const matches=lines.flatMap((line,index)=>/^\d+\s*(?:'|REM\b)/i.test(line)?[]:marker.test(line)?[index]:[]);
+  if(matches.length!==1) throw new Error(`Expected one executable 'V9968 ... demo stopped.' exit message in ${name}; found ${matches.length}.`);
+  const index=matches[0];
+  // Identify the exit by its marker, not its line number; preserve comments and numbering.
+  lines[index]=lines[index].replace(/:\s*END\s*$/i,'').trimEnd()+':RUN"A:MENU.BAS"';
+  return textFile(Buffer.from(lines.join('\n'),'utf8'),true);
 }
 
 function background() {
@@ -59,15 +65,12 @@ export async function prepareDemoDisk({source=null,entry='MENU.BAS'}={}) {
   if(!source) {
     if(!files.has('BACK.SC5')) add('BACK.SC5',background());
     for(const [name,data] of shootAssets()) if(!files.has(name)) add(name,data);
+    for(const [name,data] of roadAssets()) if(!files.has(name)) add(name,data);
     // Keep the diagnostic's result at the BASIC prompt, without a menu return.
     add('LFMCBUG.BAS',textFile(await readFile(resolve(root,'demo/LFMCBUG.BAS')),true));
-    for(const [name,exitLine] of [['ORBIT.BAS',400],['SPRITE.BAS',900],['FONT.BAS',900],['PALETTE.BAS',900],['SHUFFLE.BAS',900],['SPRITE16.BAS',900],['WAVE.BAS',900],['SHOOT.BAS',900],['INTERLAC.BAS',900],['COPYLOG.BAS',900],['CIRCLE.BAS',900]]) {
-      const lines=(await readFile(resolve(root,'demo',name),'ascii')).trimEnd().split(/\r?\n/);
-      const index=lines.findIndex(line=>line.startsWith(`${exitLine} `));
-      if(index<0 || !lines[index].includes('demo stopped.')) throw new Error(`Review the menu return line in ${name}.`);
+    for(const name of ['ORBIT.BAS','SPRITE.BAS','FONT.BAS','KANJI.BAS','PALETTE.BAS','SHUFFLE.BAS','SPRITE16.BAS','WAVE.BAS','SHOOT.BAS','INTERLAC.BAS','COPYLOG.BAS','CIRCLE.BAS','WIRE.BAS','ROAD.BAS']) {
       // Only the packaged copy returns to the menu; standalone demos stay unchanged.
-      lines[index]=lines[index].replace(/:END$/,'')+':RUN"A:MENU.BAS"';
-      add(name,textFile(Buffer.from(lines.join('\n'),'ascii'),true));
+      add(name,demoWithMenuReturn(await readFile(resolve(root,'demo',name)),name));
     }
   }
   if(!files.has(entry)) throw new Error(`Entry file not found in demo disk: ${entry}`);

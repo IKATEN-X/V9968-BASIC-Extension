@@ -31,7 +31,7 @@ detect_v9968:
     and $3e
     cp 6
     ret z
-    ; FIDでチップIDが隠れる場合がある。FIDだけを解除して検出し、その後元に戻す。
+    ; V58互換モードではIDもV9958になる。一時解除して検出し、元のモードへ戻す。
     ld a,(RG21SAV)
     and $fe
     ld c,21
@@ -49,11 +49,19 @@ detect_v9968:
     ret
 enable_v9968:
     call detect_v9968
+    ld a,(RG21SAV)
+    and $fe                 ; V58=0で拡張コマンドと256KB VRAMを有効にする。
+    call write_mode21
     ld a,(RG20SAV)
-    or $71                  ; HS | EPAL | ECOM | EVRを有効にする。
+    and $9f                 ; 旧ECOM/EVRビットは現行定義では使わない。
+    or $11                  ; HS | EPALを有効にする。
 write_mode20:
     ld (RG20SAV),a
     ld c,20
+    jp write_reg
+write_mode21:
+    ld (RG21SAV),a
+    ld c,21
     jp write_reg
 require_graphics:
     call drawing_mode
@@ -61,6 +69,7 @@ require_graphics:
     jr z,graphics_narrow
     cp 8
     jr nz,graphics_wide
+    call require_planar_graphics
     ; 標準SCREEN 10..12もSCRMODに8を格納する。YJKをRGBとして扱わない。
     ld a,(RG25SAV)
     and 8
@@ -71,6 +80,7 @@ graphics_wide:
     jr z,graphics_mode_ready
     cp 7
     jp nz,illegal
+    call require_planar_graphics
     jr graphics_mode_ready
 graphics_narrow:
     ld a,(ix+SX1H)
@@ -96,6 +106,12 @@ graphics_low_y:
     or (ix+DY2H)
     jp nz,illegal
     ret
+require_planar_graphics:
+    ; 標準SCREENでSP3が残ると連続配列になる。予約領域の対応前は描画を拒否する。
+    ld a,(RG20SAV)
+    and 8
+    jp nz,illegal
+    ret
 require_normal_graphics:
     ld a,(SCRMOD)
     cp 5
@@ -106,16 +122,10 @@ require_normal_graphics:
     jp require_graphics
 
 require_drawing_extensions:
-    call require_extended_commands
-    ld a,(RG20SAV)
-    and $40                 ; 描画ページとフォント/SATの予約領域にはEVRが必要。
-    jp z,illegal
-    ret
-
 require_extended_commands:
-    ld a,(RG20SAV)
-    and $20
-    jp z,illegal
+    ld a,(RG21SAV)
+    bit 0,a                 ; V58=1では拡張コマンドも上位VRAMも使えない。
+    jp nz,illegal
     jp detect_v9968
 
 require_palette:
@@ -294,10 +304,8 @@ screen_initialize:
     call font_off
     call pattern_off
     call wait_vdp
-    xor a
-    ld (RG21SAV),a
-    ld c,21
-    call write_reg          ; SCREENでは拡張表示モードを明示的にリセットする。
+    ld a,1
+    call write_mode21       ; V58互換モードへ戻し、フラットインターレースなどを解除する。
     xor a
     call write_mode20       ; BIOSのパレット書き込みは従来のバイト形式を使う。
     xor a
@@ -363,9 +371,10 @@ screen_fil_pages:
     jp nc,illegal
     bit 0,a
     jp nz,illegal
+    ld a,(RG21SAV)
+    bit 0,a
+    jp nz,illegal
     ld a,(RG20SAV)
-    bit 6,a
-    jp z,illegal
     bit 3,a
     jp nz,illegal
     call font_active

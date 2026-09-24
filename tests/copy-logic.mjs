@@ -62,10 +62,10 @@ const nestedOnce=add(`POKE &HC010,0:_COPY${source}-(DX+31,DY+31),0,,USR(30)+USR(
 const recoverySetup=add('QZ=0');
 const resume=add(`_COPY${source},0,TPSET,360/QZ`,11);
 const resumeNext=add(`_COPY${source},0,TPSET,TPSET:POKE &HC006,1`,2);
-const disable=add('VDP(21)=80');
+const disable=add('VDP(22)=VDP(22) OR 1');
 const disabledCopy=add(`_COPY${source},0,TPSET`,5);
-const enable=add('VDP(21)=113');
-const noHs=add('VDP(21)=112');
+const enable=add('_V9968');
+const noHs=add('VDP(21)=16');
 const font=add('_SCREEN(5):_FONT(1)');
 const fontReject=add('_COPY(0,0)-(15,15),1 TO(0,236),6,TPSET',5);
 const sat=add('_SCREEN(5):_SPRITE(3)');

@@ -76,7 +76,7 @@ const fontEmpty=add('_CIRCLE(-100,240),30,1,,,1');
 const satSetup=add('_SCREEN(5):_SPRITE(3):_SET PAGE(0,6)');
 const satReject=add('_CIRCLE(270,254),30,1,,,1',5);
 const patternSetup=add('_PATTERN ON(6)');
-const clearMode=add('_PATTERN OFF:_SCREEN(5):VDP(21)=81');
+const clearMode=add('_PATTERN OFF:_SCREEN(5):VDP(22)=VDP(22) OR 1');
 const missing=add('_CIRCLE STEP(1,2),0',5);
 const resumeSetup=add('_SCREEN(5):RR%=-1:PSET(100,100),0');
 const resume=add('_CIRCLE STEP(5,6),RR%:POKE &HC006,1',5);

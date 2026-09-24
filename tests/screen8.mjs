@@ -39,22 +39,24 @@ const once=add('DEFUSR=&HC100:POKE &HC010,0:_PSET(USR(255),USR(511)),USR(255):_W
 const onceCopy=add('POKE &HC010,0:_COPY(USR(0),USR(256))-(USR(31),USR(287)),USR(0) TO(USR(32),USR(256)),USR(1),,USR(90),USR(1)');
 const recoverySetup=add('QZ=256'),recovery=add('_PSET(0,0),QZ:POKE &HC006,1:_WAIT VDP',5);
 const resumeNext=add('_PSET(0,0),256:POKE &HC006,2',5);
-const noEvr=add('VDP(21)=49'),noEcom=add('VDP(21)=81'),disabled=add('_PSET(0,0),255',5);
-const noHs=add('VDP(21)=112:_PSET(255,511),254:_WAIT VDP');
-const noEpal=add('VDP(21)=97:_PSET(255,511),253:_WAIT VDP');
-const fid=add('VDP(21)=113:VDP(22)=65:_PSET(255,511),252:_WAIT VDP');
+const compatVram=add('VDP(22)=VDP(22) OR 1'),compatCommands=add('VDP(22)=VDP(22) OR 1'),disabled=add('_PSET(0,0),255',5);
+const noHs=add('VDP(21)=16:_PSET(255,511),254:_WAIT VDP');
+const noEpal=add('VDP(21)=1:_PSET(255,511),253:_WAIT VDP');
+const preservedMode=add('VDP(21)=17:VDP(22)=66:_PSET(255,511),252:_WAIT VDP');
 const font=add('_SCREEN(5):_FONT(1):SCREEN 8:_WAIT VDP');
 const sat=add('_SCREEN(5):_SPRITE(3):SCREEN 8:_WAIT VDP');
+const sp3Blocked=['_PSET(0,0),255','_LINE(0,0)-(31,31),255','_CIRCLE(16,16),8,255',
+  '_CLS(199)','_SET PAGE(0,2)','_COPY(0,0)-(15,15),0 TO(32,32),1'
+].map(code=>add(code,5));
 const reservationPage=add('_SET PAGE(0,2)'),rawFlat=add('VDP(22)=64:_SET PAGE(0,1)');
 const fontBad=[236,251].map(y=>add(`_PSET(1,${y}),255`,5));
-const satBad=[252,255].map(y=>add(`_PSET(1,${y}),255`,5));
 const cross=add('_LINE(1,200)-(1,300),255',5),crossReverse=add('_LINE(1,300)-(1,200),255',5);
 const copyReserved=add('_COPY(0,200)-(255,300),0 TO(0,200),1,TPSET',5);
 const clear=add('_CLS(199):_WAIT VDP'),above=add('_PSET(1,256),254:_WAIT VDP');
 const legacy=add('_SCREEN(5):_SPRITE(3)'),badSpritePalette=add('_PUT SPRITE(0,0,0),16',5),bad16=add('_PSET(0,0),16',5);
 const unsupported=[10,11,12].map(mode=>add(`_SCREEN(8):SCREEN ${mode}:_WAIT VDP`));
 const unsupportedDraw=add('_PSET(0,0),15',5),unsupportedFil=add('_SCREEN(,,,,,4)',5),unsupportedPage=add('_SET PAGE(0,0)',5);
-const slowCopy=add('VDP(21)=112:_COPY(0,0)-(255,511),0 TO(0,0),1,TXOR');
+const slowCopy=add('VDP(21)=16:_COPY(0,0)-(255,511),0 TO(0,0),1,TXOR');
 const ops=[['PSET',0],['AND',1],['OR',2],['XOR',3],['PRESET',4],['TPSET',8],['TAND',9],['TOR',10],['TXOR',11],['TPRESET',12]];
 const matrix=ops.map(([op])=>add(`_COPY(0,SY)-(255,SY+255),1 TO(0,DY),0,${op}`));
 const native=ops.map(([op])=>add(`COPY(0,0)-(255,211),1 TO(0,0),0,${op}`));
@@ -210,9 +212,10 @@ try {
     }
     await run(slowCopy);assert.equal(await number('set ::s8_copies'),1);equalVram(await vram(),slowExpected,'128KB synchronous logical COPY without HS');
     await run(noEpal);assert.equal(pixel(await vram(),255,511,0,true),253);
-    await run(fid);assert.equal(await number('debug read {VDP regs} 21'),65);
-    for(const c of [noEvr,noEcom]) {await run(c);await rejected(disabled);}
-    for(const [setup,invalid,base,size,top] of [[font,fontBad,0x37600,2048,236],[sat,satBad,0x37e00,512,252]]) {
+    await run(preservedMode);assert.equal(await number('debug read {VDP regs} 21'),66);
+    for(const c of [compatVram,compatCommands]) {await run(c);await rejected(disabled);}
+    await run(sat);for(const c of sp3Blocked) await rejected(c);
+    for(const [setup,invalid,base,size,top] of [[font,fontBad,0x37600,2048,236]]) {
       await run(setup);await run(reservationPage);const protectedData=await bytes('physical VRAM',base,size);
       for(const c of invalid) await rejected(c);
       await run(clear);assert.deepEqual(await bytes('physical VRAM',base,size),protectedData);
@@ -230,7 +233,7 @@ try {
     await rejected(unsupportedDraw);await rejected(unsupportedFil);await rejected(unsupportedPage);
   }
   assert.equal((await number('peek16 0xfd2f'))&0xfffe,work);assert.equal(await number('peek16 0xfc4a'),0xbfff);
-  console.log(yjkOnly?'PASS: isolated SCREEN 10..12 drawing/page/FIL rejection, unchanged VRAM/registers/BASIC data, no SP3 state masking the YJK guard':'PASS: ERR/ERL/RESUME/RESUME NEXT, unchanged state/BASIC data, ECOM/EVR required, HS/EPAL optional, FID restoration, odd pages, font/SAT reservations, unchanged legacy color limits and SCREEN 10..12 rejection');
+  console.log(yjkOnly?'PASS: isolated SCREEN 10..12 drawing/page/FIL rejection, unchanged VRAM/registers/BASIC data, no SP3 state masking the YJK guard':'PASS: ERR/ERL/RESUME/RESUME NEXT, unchanged state/BASIC data, V58 compatibility rejection, HS/EPAL optional, R21 preservation, odd pages, font/SAT reservations, unchanged legacy color limits and SCREEN 10..12 rejection');
   if(visual) {
     await run(visualBase);await run(visualRects);await run(visualStripes);
     data=await vram();
@@ -261,9 +264,8 @@ try {
     assert.equal(Math.min(...red.map(p=>p[0]))-left,384);assert.equal(Math.min(...red.map(p=>p[1]))-top,300);
     for(let n=0;n<16;n++) assert.deepEqual(at(100,256+n),n%2?[0,0,255]:[255,255,255]);
     assert.deepEqual(at(254,423),[255,255,255]);
-    // The pinned renderer clips the final column, despite correct VRAM pixels.
-    assert.deepEqual(at(255,423),[0,0,0],'Known SCREEN 8 FIL right-column display clipping');
-    console.log('PASS: FIL colors above 127, continuous Y=256+, alternating rows and all frame edges in VRAM; known last-column renderer clipping reproduced');
+    assert.deepEqual(at(255,423),[255,255,255],'SCREEN 8 FIL final column is visible');
+    console.log('PASS: FIL colors above 127, continuous Y=256+, alternating rows and all frame edges including the final column');
   }
   await run(finish);
 } finally {await msx.stop();}

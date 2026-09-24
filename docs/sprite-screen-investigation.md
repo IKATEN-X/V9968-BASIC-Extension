@@ -3,7 +3,7 @@
 ## Scope
 
 SCREEN 1..6 command support is implemented for non-FIL mode. SCREEN 7..12 command
-support is held pending emulator mapping fixes. The final target is every
+support is held pending integration checks after the emulator mapping fix. The final target is every
 native screen except SCREEN 0; the user approved this staged rollout.
 FG4 asset drawing via _PATTERN ON(n)/OFF is separate and works on all available
 native screens (0..8 and 10..12), without requiring SP3. Font/kanji development stays
@@ -13,13 +13,22 @@ References:
 
 - [Author: sprite mode 3](https://note.com/thara1129/n/n810be44fba3e)
 - [Author: VRAM interleaving](https://note.com/thara1129/n/n670f85abbfcf)
-- Pinned fork source snapshots in `.local/reference/`, based on `d884c4b`.
+- Current source snapshots in `.local/reference/`: `c620b69`. Historical snapshots
+  from `d884c4b` are retained in `.local/migration-d884c4b-backup/reference/`.
 
 The author specifies SCREEN-5-format 4bpp pattern sets regardless of background
 format. In the VRAM article, SCREEN 7..12 normally use interleaved addressing,
 but selecting sprite mode 3 switches to contiguous DRAM/VRAM addresses.
 
 ## SCREEN 7/8 CPU Addressing
+
+On c620b69 (2026-09-23), the native-OUT test now passes for SCREEN 5/6/7/8:
+physical 37E00h/37E01h contain A5h/5Ah, and 2BF00h/3BF00h remain zero.
+The test uses R#20=19h with V58 already cleared by `_SCREEN`.
+This confirms the CPU mapping fix, not full sprite/background integration.
+The extension's SCREEN 7+ guard has intentionally not been removed yet.
+
+### Historical reproduction (d884c4b)
 
 Run the diagnostic (no extension sprite command is used):
 

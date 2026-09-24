@@ -21,7 +21,7 @@ const chained=add('_COPY(0,0)-(255,511),0 TO(0,0),2:_COPY(0,0)-(255,511),2 TO(0,
 const low=add('_SET PAGE(0,0)');
 const even=add('_SET PAGE(2,2)');
 const odd=add('_SET PAGE(1,1)');
-const flags=add('VDP(22)=1:_SCREEN(,,,,,,3,1)');
+const flags=add('VDP(22)=2:_SCREEN(,,,,,,3,1)');
 const keep=add('_SCREEN(,,0):_SCREEN(,,,,,,1):_SCREEN(,,,,,,,0)');
 const full8=add('_SCREEN(8,,,,,4)');
 const draw8=add('_PSET(0,256),129:_WAIT VDP');
@@ -29,7 +29,7 @@ const noSprite=add('_SPRITE(3)',5),noFont=add('_FONT(1)',5);
 const withFont=add('_SCREEN(5):_FONT(1):_WAIT VDP');
 const withSprite=add('_SCREEN(5):_SPRITE(3):_WAIT VDP');
 const rejectOn=add('_SCREEN(,,,,,4)',5);
-const disabled=add('VDP(21)=0');
+const disabled=add('VDP(22)=VDP(22) OR 1');
 const text=add('_SCREEN(0)');
 const nativeOdd=add('SET PAGE 0,1');
 const oddDraw=add('_PSET(0,300),1',5);
@@ -112,13 +112,13 @@ try {
   const data=await vram();
   for(const mode of [4,0,4,1,4,2,4,3,4]) {
     await run(modes[mode]);
-    assert.equal(await number('debug read {VDP regs} 21'),mode===4?65:1,'FIL preserves FID and clears on legacy I values');
-    assert.equal(await number('peek 0xfff4'),mode===4?65:1,'FIL BASIC shadow');
+    assert.equal(await number('debug read {VDP regs} 21'),mode===4?66:2,'FIL preserves unrelated R21 bits and clears on legacy I values');
+    assert.equal(await number('peek 0xfff4'),mode===4?66:2,'FIL BASIC shadow');
     assert.equal(await number('debug read {VDP regs} 9')&12,mode===4?0:((mode&1)<<3)|((mode&2)<<1));
     assert.deepEqual(await bytes('memory',0xfaf5,2),Buffer.from([2,2]),'Native page units stay unchanged');
     assert.deepEqual(await vram(),data,'Interlace-only updates do not rewrite VRAM');
   }
-  await run(keep);assert.equal(await number('debug read {VDP regs} 21'),65,'Omitted I preserves FIL');
+  await run(keep);assert.equal(await number('debug read {VDP regs} 21'),66,'Omitted I preserves FIL');
   await run(flat);
   for(const c of fullPages) await run(c);
   for(let p=0;p<4;p++) assert.deepEqual(await vram(p*65536,65536),Buffer.alloc(65536,(p+1)*17),'CLS fills one full 64KB page');

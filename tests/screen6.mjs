@@ -54,9 +54,9 @@ const recoverySetup=add('X%=512');
 const resume=add('_PSET(X%,423),3:POKE &HC006,1:_WAIT VDP',5);
 const next=add('_CLS(4):POKE &HC006,2',5);
 const stable=add('_PSET(0,0),0:_WAIT VDP');
-const noEcom=add('VDP(21)=81'),noEvr=add('VDP(21)=49');
+const compatCommands=add('VDP(22)=VDP(22) OR 1'),compatVram=add('VDP(22)=VDP(22) OR 1');
 const disabled=add('_PSET(0,0),1',5),disabledFil=add('_SCREEN(,,,,,4)',5);
-const noHs=add('VDP(21)=112'),noEpal=add('VDP(21)=97'),fid=add('VDP(22)=65');
+const noHs=add('VDP(21)=16'),noEpal=add('VDP(21)=1'),preservedMode=add('VDP(22)=66');
 const font=add('_SCREEN(5):_FONT(1):SCREEN 6:_WAIT VDP');
 const sat=add('_SCREEN(5):_SPRITE(3):SCREEN 6:_WAIT VDP');
 const reservedPage=add('_SET PAGE(0,6)'),rawFil=add('VDP(22)=64:_SET PAGE(0,3)');
@@ -181,8 +181,8 @@ try {
   for(const c of invalid) await rejected(c);
   await run(odd);await rejected(oddDraw);await run(normal);await run(odd);await rejected(oddEntry);
   await run(flat);await run(recoverySetup);await run(resume,1);assert.equal(await number('peek 0xc006'),1);await run(next,2);assert.equal(await number('peek 0xc006'),2);
-  await run(noHs);await run(reset);await run(matrix[0][5]);await run(noEpal);await run(matrix[0][0]);await run(fid);await run(stable);assert.equal(await number('debug read {VDP regs} 21'),65);
-  await run(noEcom);await rejected(disabled);await run(noEvr);await rejected(disabled);await rejected(disabledFil);
+  await run(noHs);await run(reset);await run(matrix[0][5]);await run(noEpal);await run(matrix[0][0]);await run(preservedMode);await run(stable);assert.equal(await number('debug read {VDP regs} 21'),66);
+  await run(compatCommands);await rejected(disabled);await run(compatVram);await rejected(disabled);await rejected(disabledFil);
   for(const [setup,invalid,address,size,top] of [[font,fontBad,0x37600,2048,236],[sat,satBad,0x37e00,512,252]]) {
     await run(setup);await run(reservedPage);const protectedData=await bytes('physical VRAM',address,size);
     for(const c of invalid) await rejected(c);

@@ -62,6 +62,7 @@ for (const machine of selected('machine', ['V9968_Basic', 'Panasonic_FS-A1ST(V99
           }
           debug set_bp ${clear} {[pc_in_slot ${slot}]} {incr ::clear_count}
           debug set_bp ${allocate} {[pc_in_slot ${slot}]} {incr ::alloc_count}
+          debug set_bp ${address('banner_print')} {[pc_in_slot ${slot}]} {incr ::banner_count}
           debug set_bp 0x7f00 {[pc_in_slot ${slot}]} {incr ::wrapper_count}
           debug set_bp 0x7f10 {[pc_in_slot ${slot}]} {incr ::previous_count}
           set ::glyph_count 0
@@ -70,7 +71,7 @@ for (const machine of selected('machine', ['V9968_Basic', 'Panasonic_FS-A1ST(V99
         for (const reset of ['power', 'power-cycle']) {
           if (reset === 'power-cycle') await msx.command('set power off');
           await msx.command(`set ::boot_count 0; set ::boot_pointers {}; set ::clear_count 0;
-            set ::alloc_count 0; set ::wrapper_count 0; set ::previous_count 0;
+            set ::alloc_count 0; set ::wrapper_count 0; set ::previous_count 0; set ::banner_count 0;
             set power on`);
           await msx.advance(12);
           const boots = mapper === 'Normal' ? 1 : 2;
@@ -80,6 +81,18 @@ for (const machine of selected('machine', ['V9968_Basic', 'Panasonic_FS-A1ST(V99
             `${context}: reset must clear SLTWRK; duplicate INIT must retain the marker`);
           assert.equal(await number('set ::alloc_count'), 1, context);
           assert.match(await msx.screen(), /Ok/, `${context}: BASIC prompt after ${reset}`);
+          const screen = await msx.screen();
+          assert.match(screen, /V9968 BASIC Extension 0\.1\s+Ok/);
+          assert.equal(screen.match(/V9968 BASIC Extension/g)?.length, 1);
+          const lines = screen.split('\n').map(line => line.trim());
+          const bannerLine = lines.indexOf('V9968 BASIC Extension 0.1');
+          assert.match(lines[bannerLine - 1], machine.includes('FS-A1ST') ? /^Disk BASIC version/ : /Bytes free$/);
+          assert.equal(lines[bannerLine + 1], 'Ok');
+          assert.ok(screen.indexOf('Bytes free') < screen.indexOf('V9968 BASIC Extension'));
+          if (machine.includes('FS-A1ST')) {
+            assert.ok(screen.indexOf('Disk BASIC version') < screen.indexOf('V9968 BASIC Extension'));
+          }
+          assert.equal(await number('set ::banner_count'), 1);
           assert.deepEqual(await block(slotWork, 6), Buffer.concat([previous, Buffer.from([0xc9])]));
           assert.deepEqual(await block(0xfed0, 5), boots === 1 ? Buffer.from(callf(slot, clear)) : wrapper);
           const work = await number(`peek16 ${pointer}`);
@@ -91,6 +104,7 @@ for (const machine of selected('machine', ['V9968_Basic', 'Panasonic_FS-A1ST(V99
           assert.equal(await number(`peek16 ${pointer}`), work);
           assert.equal(await number('peek16 0xfc4a'), himem);
           assert.equal(await number('set ::alloc_count'), 1);
+          assert.equal(await number('set ::banner_count'), 1, 'CLEAR/NEW must not repeat the banner');
           console.log(`PASS: ${context}, ${reset}, ${boots} INIT / one allocation / hook chain`);
         }
 
@@ -135,6 +149,7 @@ for (const machine of selected('machine', ['V9968_Basic', 'Panasonic_FS-A1ST(V99
         assert.ok(await number('set ::glyph_count') >= 2, 'GRP must still draw through the installed font hook');
         await basic('_SCREEN(0):PRINT "BOOT PASS"');
         assert.match(await msx.screen(), /BOOT PASS/);
+        assert.equal(await number('set ::banner_count'), 1, 'Repeated INIT must not repeat the banner');
         console.log(`PASS: ${context}, repeated runtime INIT preserves work, hooks and BASIC data`);
       } finally {
         await msx.stop();

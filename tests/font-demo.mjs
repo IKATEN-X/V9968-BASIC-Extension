@@ -44,9 +44,10 @@ export async function checkFontDemo(msx,{visual=false,pal=false,machine='Panason
   await msx.type('NEW\r');
   await msx.advance(0.5);
   if(visual) await msx.command('set renderer SDLGL-PP; set throttle on');
-  await msx.command('set ::fd_stage 0; set ::fd_calls 0; set ::fd_fill_start -1; set ::fd_preview_end -1; set ::fd_screens 0; set ::fd_render_error {}; set ::fd_visible_calls 0; set ::fd_definitions 0');
+  await msx.command('set ::fd_stage 0; set ::fd_started 0; set ::fd_calls 0; set ::fd_fill_start -1; set ::fd_preview_end -1; set ::fd_screens 0; set ::fd_render_error {}; set ::fd_visible_calls 0; set ::fd_definitions 0');
   const breakpoints=[];
   try {
+    breakpoints.push(await msx.command(`debug set_bp ${address('cmd_init')} {[pc_in_slot 1]} {set ::fd_started 1}`));
     breakpoints.push(await msx.command(`debug set_bp ${address('font_write_glyph')} {[pc_in_slot 1] && $::fd_stage == 0} {incr ::fd_definitions}`));
     breakpoints.push(await msx.command(`debug set_bp ${address('font_draw')} {[pc_in_slot 1]} {
       incr ::fd_calls
@@ -73,7 +74,8 @@ export async function checkFontDemo(msx,{visual=false,pal=false,machine='Panason
     let basicError='';
     for(let i=0;i<200 && Number(await msx.command('set ::fd_stage'))<3;i++) {
       await msx.advance(0.5);
-      if(i>3 && Number(await msx.command('peek 0xFCAF'))!==5) {basicError=(await msx.screen()).trim();break;}
+      // Keyboard loading can take more than two seconds on Z80.
+      if(Number(await msx.command('set ::fd_started')) && Number(await msx.command('peek 0xFCAF'))!==5) {basicError=(await msx.screen()).trim();break;}
     }
     assert.equal(Number(await msx.command('set ::fd_stage')),3,`Demo did not finish its preparation/text/random stages: ${basicError}`);
     await msx.advance(0.2);

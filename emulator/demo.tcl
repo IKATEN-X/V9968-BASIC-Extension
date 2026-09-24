@@ -5,9 +5,11 @@ set renderer SDLGL-PP
 set scale_factor 3
 proc load_orbit {} {
     set input [open $::env(V9968_DEMO) r]
+    fconfigure $input -encoding binary -translation binary
     set program [read $input]
     close $input
-    set program [string map [list "\r\n" "\n" "\n" "\r"] $program]
+    set program [string trimright $program "\x1a"]
+    set program [string map [list "\r\n" "\r" "\n" "\r"] $program]
     type_via_keybuf "$program\rRUN\r"
 }
 after time 12 load_orbit

@@ -104,7 +104,7 @@ try {
   await msx.type('\x1b'); await msx.advance(1);
   assert.match(await msx.screen(),/V9968 palette demo stopped/);
   assert.equal(await number('debug read {VDP regs} 20'),0);
-  assert.equal(await number('debug read {VDP regs} 21'),0);
+  assert.equal(await number('debug read {VDP regs} 21'),1,'SCREEN 0 restores V58 compatibility');
   console.log(`PASS [${machine}, ${pal?50:60} Hz]: SCREEN 8, 256 swatches, 32 grayscale levels, ${hold.toFixed(3)}s preview`);
   console.log('PASS: palette-only animation, unchanged VRAM, pause/resume, color/gray switch and Escape cleanup'+(visual?', rendered screenshot pixel checks':''));
 } finally {await msx.stop();}

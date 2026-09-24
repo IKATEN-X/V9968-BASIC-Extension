@@ -19,7 +19,7 @@ const rejected=transforms.slice(0,3).map(([tail])=>add(`_COPY${source},P,,${tail
 rejected.push(add(`_COPY${source}-(DX+31,DY+31),P`,5));
 const resume=add(`_COPY${source},P,,Q`,5);
 const once=add('DEFUSR=&HC100:POKE &HC010,0:_COPY(USR(SX),USR(SY))-(USR(SX+23),USR(SY+16)),USR(P) TO(USR(DX),USR(DY)),USR(P),XOR,USR(0),USR(1)');
-const slow=add('VDP(21)=112'),fast=add('VDP(21)=113');
+const slow=add('VDP(21)=16'),fast=add('VDP(21)=17');
 const large=add('_COPY(0,0)-(W-1,510),P TO(0,1),P:_COPY(0,1)-(W-1,511),P TO(0,0),P,XOR');
 const protectedInit=add('_SCREEN(5):_SPRITE(3):_WAIT VDP');
 const protectedCopy=add('_COPY(0,240)-(15,255),6 TO(1,240),6',5);

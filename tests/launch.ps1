@@ -34,9 +34,17 @@ Assert-True (!$diagnostic.Contains('MENU.BAS')) 'Diagnostic results must not be 
 Assert-True ((Get-Content -LiteralPath "$env:V9968_DISK\AUTOEXEC.BAS" -Raw).Contains('A:CIRCLE.BAS')) 'CIRCLE entry was not forwarded.'
 Assert-True ((Get-Content -LiteralPath "$env:V9968_DISK\CIRCLE.BAS" -Raw).Contains('RUN"A:MENU.BAS"')) 'Packaged CIRCLE must return to the menu.'
 
+& "$root\run.ps1" -Disk -Entry ROAD.BAS -NoBuild
+Assert-True ((Get-Content -LiteralPath "$env:V9968_DISK\AUTOEXEC.BAS" -Raw).Contains('A:ROAD.BAS')) 'Road entry was not forwarded.'
+Assert-True ((Get-Content -LiteralPath "$env:V9968_DISK\ROAD.BAS" -Raw).Contains('RUN"A:MENU.BAS"')) 'Road must return to the menu after its exit line moves.'
+foreach ($asset in @('ROAD.SC5','CAR.SC5','ROAD.PAL')) {
+    Assert-True (Test-Path -LiteralPath "$env:V9968_DISK\$asset") "Road asset missing: $asset"
+}
+
 & "$root\run.ps1" -Program demo/FONT.BAS -NoBuild
 Assert-True ($capture.Launch.Arguments -contains ('"{0}\emulator\demo.tcl"' -f $root)) 'Legacy launch must still select demo.tcl.'
-Assert-True ($env:V9968_DEMO -eq [IO.Path]::GetFullPath('demo/FONT.BAS', $root)) 'Legacy program path was not forwarded.'
+Assert-True (Test-Path -LiteralPath $env:V9968_DEMO) 'Prepared program is missing.'
+Assert-True ($env:V9968_DEMO.StartsWith("$root\build\programs\")) 'Legacy program must use an isolated Shift-JIS snapshot.'
 Assert-Rejected @{ Disk = $true; Machine = 'V9968_Basic' } 'no disk drive'
 Assert-Rejected @{ Disk = $true; Program = 'demo/FONT.BAS' } 'Use -Entry'
 Assert-Rejected @{ Entry = 'FONT.BAS' } 'require -Disk'

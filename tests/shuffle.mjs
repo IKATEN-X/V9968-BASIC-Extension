@@ -13,7 +13,7 @@ function add(body,error=0) { cases.push({body,error}); return cases.length; }
 const setup=add([
   '_SCREEN(5):_SET PAGE(2,2):_CLS(3):_FONT(1):_SPRITE(3)',
   '_PUT SPRITE(0,48,80),0,1792:_WAIT VDP',
-  'VDP(21)=&H7E:VDP(22)=1:VDP(26)=4'
+  'VDP(21)=&H1E:VDP(22)=2:VDP(26)=4'
 ]);
 const on=add(['_SCREEN(,,,,,,1)']);
 const off=add(['_SCREEN(,,,,,,0)']);
@@ -250,13 +250,13 @@ try {
   await run(legacy);
   await run(disabled);
   await change(on,true);
-  assert.equal(await number('peek 0xfff3'),0,'SPS must not enable unrelated ECOM/EVR/EPAL');
+  assert.equal(await number('peek 0xfff3'),0,'SPS must not enable unrelated palette/command extensions');
   await change(wide,2); await checkFlags(2);
-  assert.equal(await number('peek 0xfff3'),128,'S16 must not enable unrelated ECOM/EVR/EPAL');
+  assert.equal(await number('peek 0xfff3'),128,'S16 must not enable unrelated palette/command extensions');
   await change(both,3); await checkFlags(3);
   await change(off,false);
   await change(fixed,undefined,1);
-  assert.equal(await number('peek 0xfff3'),2,'SVNS must not enable unrelated ECOM/EVR/EPAL');
+  assert.equal(await number('peek 0xfff3'),2,'SVNS must not enable unrelated palette/command extensions');
   await change(following,undefined,0);
   console.log('PASS: SCREEN 0/5/8 initialization and default OFF, text-mode ON rejection, native sprite mode without unrelated extension dependencies');
   for(const test of nativeCases) {

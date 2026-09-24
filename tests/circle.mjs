@@ -48,7 +48,7 @@ const invalid = [
   ['_CIRCLE(10,10),',24],['_CIRCLE(10,10),10 XYZ',2]
 ].map(([c,e])=>add(c,e));
 const screenBad = [0,1,4,10,11,12].map(s=>[add(`SCREEN ${s}:VDP(22)=0:_V9968`),add('_CIRCLE(10,10),2',5)]);
-const extensionsBad = [81,49].map(v=>[add(`_SCREEN(5):VDP(21)=${v}`),add('_CIRCLE(10,10),2',5)]);
+const extensionsBad = [1,65].map(v=>[add(`_SCREEN(5):VDP(22)=${v}`),add('_CIRCLE(10,10),2',5)]);
 const font = add('_SCREEN(5):_FONT(1):_SET PAGE(0,6)');
 const fontBad = add('_CIRCLE(100,230),10,1,,,1',5);
 const fontGood = add('_CIRCLE(100,225),10,1,,,1:_WAIT VDP');
@@ -72,7 +72,7 @@ const arcs = [
 const flatDefaults = [5,6,7,8].map(s=>({s,n:add(`_SCREEN(${s},,,,,4):_CLS(0):_CIRCLE(120,330),40,1:_WAIT VDP`)}));
 const patternFlat = add('_SCREEN(7,,,,,4):_SET PAGE(0,1):_PATTERN ON(7):_CLS(0):_CIRCLE(128,128),50,14');
 const largeVisible = add('_SCREEN(5):_CLS(0):_CIRCLE(0,0),32767,1,,,1000:_WAIT VDP');
-const noHs = add('_SCREEN(5):VDP(21)=112:_CIRCLE(100,100),30,1,,,1:_WAIT VDP');
+const noHs = add('_SCREEN(5):VDP(21)=16:_CIRCLE(100,100),30,1,,,1:_WAIT VDP');
 const fgError = add('_PATTERN ON(7):_CIRCLE(100,100),20,16',5);
 const badFilPage = add('_SCREEN(7,,,,,4):SET PAGE 0,1');
 const deniedFilPage = add('_CIRCLE(100,100),20',5);

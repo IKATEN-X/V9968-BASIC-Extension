@@ -28,7 +28,9 @@ if ($Disk) {
 } else {
     $programPath = [IO.Path]::GetFullPath($Program, $PSScriptRoot)
     if (!(Test-Path -LiteralPath $programPath -PathType Leaf)) { throw "BASIC program not found: $programPath" }
-    $env:V9968_DEMO = $programPath
+    $prepared = & node "$PSScriptRoot\tools\msx-text.mjs" $programPath
+    if ($LASTEXITCODE -ne 0) { throw 'BASIC text preparation failed.' }
+    $env:V9968_DEMO = $prepared.Trim()
     $script = "$PSScriptRoot\emulator\demo.tcl"
 }
 if (!$NoBuild) { & "$PSScriptRoot\build.ps1" }

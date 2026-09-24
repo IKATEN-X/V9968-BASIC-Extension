@@ -10,7 +10,74 @@ see [the ROM startup investigation](rom-boot-investigation.md). That fix adds
 five ROM bytes but does not change this inventory's RAM/VRAM sizes. The source
 addresses and ROM hash below describe the pre-fix snapshot audited here.
 
-## Conclusions
+## Update: startup banner (2026-09-23)
+
+The startup banner now uses seven previously unused bytes in the existing
+32-byte block: offsets 23..27 save H.READ, 28 holds its trailing RET, and 29
+is the print-once flag. Offsets 1..3 and 30 remain unused. Current occupancy
+is **28 bytes, with four unused**; including the existing eight SLTWRK bytes,
+the content inventory is 36 bytes. The 21/29-byte figures below are the
+original September 21 snapshot, not the current minimum.
+
+The reservation remains 32 bytes plus 0..1 alignment bytes. There is no new
+allocator, HIMEM adjustment, CALL-frame growth or VRAM reservation. The saved
+H.READ bytes and flag belong to the ROM until reset, even after display:
+a later hook owner may retain a call to `banner_ready`. First font installation
+now clears offsets 0..22 only, preserving both banner data and PATTERN state.
+
+H.READ (FF07h, BASIC READY) is installed after the existing startup allocation.
+On first entry, the flag is cleared before output. The hook is restored only
+if all five bytes still identify this ROM; later owners are not overwritten.
+If another H.CLEA invocation (such as AUTOEXEC's RUN) occurs before READY,
+the existing clear hook cancels the pending banner and restores H.READ with
+the same ownership check. BREAK or END must not print a delayed startup banner.
+The saved predecessor remains available to later wrapper hooks after cancellation.
+The predecessor is always called with the original main registers. The banner
+also saves the alternate registers and incoming interrupt state; patching is
+interrupt-protected. The entry saves 22 stack bytes, with nested helper calls,
+CALLF, BIOS CHPUT and interrupts using additional transient stack. It adds no
+private temporary frame. Existing allocator/headroom and coexistence audit
+gaps remain open. As with the existing hooks, copying a five-byte predecessor
+assumes relocatable hook code (RET/JP/CALLF), not a location-dependent JR.
+
+`tests/banner.mjs` covers predecessor and subsequent wrapper chains, first
+font installation before READY, register preservation, later CLEAR/RUN/NEW,
+error recovery and disk AUTOEXEC. `tests/kanji-break.mjs` verifies actual
+Ctrl+STOP without a delayed banner, retained BASIC program/arrays and CONT.
+`tests/boot.mjs` covers the two CPU machines,
+both cartridge slots, Normal/Mirrored/automatic mappings, power cycles and
+repeated INIT. These are not a proof for every third-party resident ROM.
+
+## Update: Japanese GRP font (2026-09-23)
+
+FONT(3) uses the remaining four bytes: offset 1 is a Shift-JIS lead byte,
+2..3 hold the output FCB identity, and 30 is the detected Kanji-ROM level.
+All 32 reserved bytes now have uses. The FCB identity is only compared with
+the current PTRFIL, never dereferenced; no BASIC string or array address is
+cached. Font/screen changes, CLEAR/NEW/RUN, controls and foreign output clear
+the pending lead byte. Closing and reopening the identical FCB without output
+cannot be detected by H.OUTD: complete each character before CLOSE, or reset
+the decoder with FONT(3). No close hook or per-file allocation is added.
+
+Permanent reservation remains **32 + 0..1 alignment bytes**, plus the same
+eight existing SLTWRK bytes. No ordinary output changes HIMEM. The existing
+256-byte font frame contains 32 raw and 32 reordered glyph bytes; it does not
+grow. The GRP hook now checks its frame plus 256 bytes of nested-call/interrupt
+headroom against STREND before allocating it, returning ERR=7 on failure.
+The startup allocator and whole-slot SLTWRK assumptions remain separate open
+audit items; this check is not a bound on arbitrary third-party interrupts.
+
+VRAM reservation is still 37600h..37DFFh (2048 bytes). Under FONT(3), only
+37600h..3761Fh is needed as synchronous single-glyph staging; switching to
+FONT(1/2) reloads the old 256-glyph set. Sprite attributes are untouched.
+BASIC demo strings, variables and position arrays use ordinary CLEAR/DIM.
+
+`tests/kanji.mjs` and `--z80` check native PUT KANJI parity, mixed-width
+characters, JIS2, split bytes, channel/control resets, clipping, synchronous
+returns and R#12/14/15 restoration. Heap-boundary injection verifies ERR=7
+before VRAM changes and preserves BASIC scalar/array/string sentinels.
+
+## Snapshot conclusions
 
 - The current upper-RAM reservation is 32 bytes plus 0..1 alignment bytes.
   It contains 21 occupied bytes and 11 unused bytes.
@@ -34,7 +101,7 @@ bytes to the inventory does not mean BASIC loses another eight free bytes.
 The existing H.CLEA/H.OUTD hook entries are also system storage, listed below
 without double-counting them as new allocations.
 
-## Current 32-byte block
+## Snapshot 32-byte block
 
 Offsets are relative to `font_state() & FFFEh`. The address is not fixed.
 Sources: [font.asm](../src/font.asm), [pattern.asm](../src/pattern.asm).

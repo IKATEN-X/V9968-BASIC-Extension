@@ -168,7 +168,7 @@ try {
   assert.equal(Number(await msx.command('peek 0xfcaf')),5,'BASIC did not start');
   await run('move',5);
   await run('init');
-  assert.equal(await reg(20),0x79);
+  assert.equal(await reg(20),0x19);
   assert.equal(await reg(8)&2,0);
   assert.equal(await reg(5),0xfc);
   assert.equal(await reg(11),6);
@@ -177,7 +177,7 @@ try {
   console.log(`PASS [${machine}]: Sprite mode 3 initialization, 64 hidden records`);
   await run('image');
   await checkRecord(0,{x:40,y:40,pattern:1792});
-  assert.equal(await reg(20),0x79);
+  assert.equal(await reg(20),0x19);
   assert.equal(await reg(14),Number(await msx.command('peek 0xffed')),'R#14 was not restored');
   if (visual) {
     await mkdir(resolve(root,'build/screenshots'),{recursive:true});
@@ -286,7 +286,7 @@ try {
   }
   await run('other drawing');
   assert.deepEqual(await bytes(sat,512),before);
-  assert.equal(await reg(20),0x79);
+  assert.equal(await reg(20),0x19);
   console.log('PASS: malformed arguments and ON ERROR recovery, drawing/COPY/palette coexistence, protected SAT');
   await run('prepare retry');
   await run('retry',5,1);
@@ -297,13 +297,13 @@ try {
   assert.equal(Number(await msx.command('peek 0xc006')),3,'RESUME NEXT must allow a subsequent valid command');
   console.log('PASS: unified syntax, old syntax rejection, nested expressions, single evaluation, ERR/ERL, RESUME/RESUME NEXT');
   await run('release');
-  assert.equal(await reg(20),0x71);
+  assert.equal(await reg(20),0x11);
   assert.equal(await reg(8)&2,2);
   assert.deepEqual(await bytes(sat,512),Buffer.alloc(512,0x44));
   await run('init');
   await checkCleared();
   await run('screen reset');
-  assert.equal(await reg(20),0x71);
+  assert.equal(await reg(20),0x11);
   await run('move',5);
   await run('text');
   assert.equal(await reg(20),0);

@@ -23,7 +23,7 @@ const bad=[['_PUT SPRITE(64,0,0)',5],['_PUT SPRITE(0,0,0),16',5],['_PUT SPRITE(0
   ['_PUT SPRITE(0,512,0)',5],['_PUT SPRITE(0,0,0),,,TRANS(1)',5],['_FONT(1)',5]].map(([c,e])=>add(c,e));
 const rejectSetups=[0,7,8,10,11,12].map(m=>add(`SCREEN ${m}:_V9968`));
 const badMode=add('_SPRITE(3)',5);
-const missingEcom=add('VDP(21)=89'),missingEvr=add('VDP(21)=57'),missingPalette=add('VDP(21)=105');
+const compatCommands=add('VDP(22)=VDP(22) OR 1'),compatVram=add('VDP(22)=VDP(22) OR 1'),missingPalette=add('VDP(21)=9');
 const restore=add('_V9968'),disable=add('_SPRITE(0)');
 const msx=new OpenMsx({rom:'dist/v9968-basic.rom',machine});
 const num=async s=>Number(await msx.command(s));
@@ -80,7 +80,7 @@ try {
     await run(flags);await run(reinit);assert.equal((await num('debug read {VDP regs} 20'))&0x82,0x82);assert.equal((await num('debug read {VDP regs} 25'))&128,128);
     await run(on6);const preserved=await table();await run(protect);await reject(badPixel);assert.deepEqual(await table(),preserved);
     for(const n of bad.slice(0,m===5?-1:undefined))await reject(n);
-    for(const n of [missingEcom,missingEvr,missingPalette]){await run(n);await reject(badMode);await run(restore);}
+    for(const n of [compatCommands,compatVram,missingPalette]){await run(n);await reject(badMode);await run(restore);}
     await run(disable);await run(on7);
     console.log(`PASS [${machine}]: SCREEN ${m} mode3, FG4 assets, 64 SAT records, options/omissions, flags, protection and errors${visual?', rendered pixels/motion/OFF':''}`);
   }

@@ -65,7 +65,7 @@ try {
   await msx.type(program.join('\r')+'\rRUN\r');
   await msx.advance(8);
   assert.equal(await read(0xfcaf),5,'BASIC did not enter SCREEN 5');
-  assert.equal(Number(await msx.command('debug read {VDP regs} 20')),0x71);
+  assert.equal(Number(await msx.command('debug read {VDP regs} 20')),0x11);
   console.log(`PASS [${machine}]: BASIC extension boot and V9968 detection`);
   await runCase(1);
   assert.equal(await pixel(10,20,7),3);
